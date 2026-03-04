@@ -6,8 +6,18 @@ import java.util.Map;
 
 public class HttpServer {
 
-    static Map<String, WebMethod>  endPoints = new HashMap();
+    static Map<String, WebMethod> endPoints = new HashMap();
+    static String staticFilesFolder = "webroot/public";
 
+    static Map<String, String> MIME_TYPES = new HashMap<>();
+    static {
+        MIME_TYPES.put("html", "text/html");
+        MIME_TYPES.put("css",  "text/css");
+        MIME_TYPES.put("js",   "application/javascript");
+        MIME_TYPES.put("png",  "image/png");
+        MIME_TYPES.put("jpg",  "image/jpeg");
+        MIME_TYPES.put("jpeg", "image/jpeg");
+    }
 
     public static void main(String[] args) throws IOException, URISyntaxException {
 
@@ -43,6 +53,7 @@ public class HttpServer {
             boolean isFirstLine = true;
 
             String repath = null;
+            String struripath = null;
             while ((inputLine = in.readLine()) != null) {
                 System.out.println("Received: " + inputLine);
 
@@ -50,7 +61,7 @@ public class HttpServer {
                     String[] flTokens = inputLine.split(" ");
 
                     String method = flTokens[0];
-                    String struripath = flTokens[1];
+                    struripath = flTokens[1];
                     String protocolversion = flTokens[2];
 
                     URI uripath = new URI(struripath);
@@ -70,6 +81,9 @@ public class HttpServer {
 
             if (currentWm != null){
 
+                HttpRequest req = new HttpRequest(struripath);
+                HttpResponse res = new HttpResponse();
+
                 outputLine = "HTTP/1.1 200 OK\n\r" +
                         "Content-Type: text/html\n\r" +
                         "\n\r" +
@@ -80,11 +94,34 @@ public class HttpServer {
                         + "<title>Title of the document</title>"
                         + "</head>"
                         + "<body>"
-                        + currentWm.execute()
+                        + currentWm.execute(req, res)
                         + "</body>"
                         + "</html>";
 
-            }else {
+            } else {
+
+                // Intentar servir archivo estático
+                String resourcePath = staticFilesFolder + repath;
+                InputStream fileStream = HttpServer.class.getClassLoader()
+                        .getResourceAsStream(resourcePath);
+
+                if (fileStream != null) {
+                    String ext = repath.contains(".") ? repath.substring(repath.lastIndexOf('.') + 1) : "";
+                    String contentType = MIME_TYPES.getOrDefault(ext, "text/html");
+
+                    byte[] fileBytes = fileStream.readAllBytes();
+                    fileStream.close();
+
+                    String headers = "HTTP/1.1 200 OK\r\n"
+                            + "Content-Type: " + contentType + "\r\n"
+                            + "\r\n";
+                    clientSocket.getOutputStream().write(headers.getBytes());
+                    clientSocket.getOutputStream().write(fileBytes);
+                    out.close();
+                    in.close();
+                    clientSocket.close();
+                    continue;
+                }
 
                 outputLine = "HTTP/1.1 200 OK\n\r" +
                         "Content-Type: text/html\n\r" +
@@ -114,5 +151,8 @@ public class HttpServer {
         endPoints.put(path, wm);
     }
 
+    public static void staticfiles(String folder) {
+        staticFilesFolder = folder.startsWith("/") ? folder.substring(1) : folder;
+    }
 
 }

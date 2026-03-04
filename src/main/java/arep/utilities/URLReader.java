@@ -12,23 +12,13 @@ public class URLReader {
 
 
 
-        // Crea el objeto que representa una URL
         URL siteURL = new URL(site);
-
-        // Crea el objeto URLConnection
         URLConnection urlConnection = siteURL.openConnection();
-
-        // Obtiene los campos del encabezado y los almacena en una estructura Map
         Map<String, List<String>> headers = urlConnection.getHeaderFields();
-
-        // Obtiene una vista del mapa como conjunto de pares <K,V> para poder navegarlo
         Set<Map.Entry<String, List<String>>> entrySet = headers.entrySet();
-
-        // Recorre la lista de campos e imprime los valores
         for (Map.Entry<String, List<String>> entry : entrySet) {
             String headerName = entry.getKey();
 
-            // Si el nombre es nulo, significa que es la línea de estado
             if (headerName != null) {
                 System.out.print(headerName + ": ");
             }
